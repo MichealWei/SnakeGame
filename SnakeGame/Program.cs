@@ -263,7 +263,7 @@ namespace SnakeGame
                     break;
 
             }
-            if (headX == width || headX == 0 || headY == height || headY == 0)
+            if (headX == width || headX < 0 || headY == height || headY < 0)
             {
                 lastState._gameOver = true;
                 return lastState;
