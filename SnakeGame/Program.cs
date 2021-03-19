@@ -26,12 +26,11 @@ namespace SnakeGame
             public bool _gameOver;
             public List<Point> snake;
             public Point _food;
-
+            public eDirecton dir;
         }
 
-        enum eDirecton {LEFT = 0, RIGHT, DOWN, UP, STOP };
+        public enum eDirecton {LEFT = 0, RIGHT, DOWN, UP };
         const string headElement = @"> < ^ v";
-        static eDirecton dir;
         static Random random = new Random();
 
         static void Main(string[] args)
@@ -39,10 +38,11 @@ namespace SnakeGame
             Console.SetWindowSize(150, 80);
             Console.SetBufferSize(Console.WindowWidth, Console.WindowHeight);
             gameState lastState =  Setup();
+
             PrintGameView(lastState);
             while (!lastState._gameOver)
             {
-                Input().Map(direct => new Tuple<gameState, eDirecton>(lastState, direct)).Bind(updateGameState)
+                Input().Map(direct => { lastState.dir = direct; return lastState; }).Bind(updateGameState)
                     .Match(
                         Left: err => { Console.WriteLine(err.Message + "\nPlease retry\n"); },
                         Right: newState =>
@@ -53,6 +53,8 @@ namespace SnakeGame
                         }
                     );
             }
+
+            //Following code is for the version of auto movement of snake
 
             //Input().Match(Left: _ => { }, Right: direct => dir = direct);
             //var tokenSource = new CancellationTokenSource();
@@ -88,7 +90,7 @@ namespace SnakeGame
         {
             gameState initState = new gameState();
             bool validInput = false;
-            dir = eDirecton.LEFT;
+            initState.dir = eDirecton.LEFT;
             
            
             string cmd = System.String.Empty;
@@ -148,16 +150,17 @@ namespace SnakeGame
 
 
 
-        private static string GetHeadSymbol()
+        private static string GetHeadSymbol(eDirecton directon)
         {
             string[] tempHeadStr = headElement.Split(' ');
-            return tempHeadStr[(int)dir];
+            int direc = (int)directon;
+            return tempHeadStr[direc];
         }
 
         private static void PrintGameView(gameState currentstate)
         {
             int height = currentstate._height, width = currentstate._width;
-            int theOtherEnd = width - 1;
+            int theRightWall = width - 1;
             int headX = currentstate.snake[0].x, headY = currentstate.snake[0].y;
             int snakeLength = currentstate.snake.Count();
             int[] tailX = new int[height], tailY = new int[height];
@@ -176,7 +179,7 @@ namespace SnakeGame
                 {
                     if (j == 0) Console.Write("#");
                     if (i == headY && j == headX)
-                        Console.Write(GetHeadSymbol());
+                        Console.Write(GetHeadSymbol(currentstate.dir));
                     else if (i == foodY && j == foodX)
                         Console.Write("$");
                     else
@@ -193,7 +196,7 @@ namespace SnakeGame
                         if (!printed)
                             Console.Write(" ");
                     }
-                    if (j == theOtherEnd) Console.Write("#");
+                    if (j == theRightWall) Console.Write("#");
                     Console.CursorVisible = false;
 
                 }
@@ -238,14 +241,12 @@ namespace SnakeGame
             return new Tuple<int, int>(width, height);
         }
 
-        private static Either<Error, gameState> updateGameState(Tuple<gameState, eDirecton> lastStateAndDir)
+        private static Either<Error, gameState> updateGameState(gameState newState)
         {
-            gameState lastState = lastStateAndDir.Item1;
-            Point snakeHead = lastState.snake[0];
+            Point snakeHead = newState.snake[0];
             int headX = snakeHead.x, headY = snakeHead.y;
-            int width = lastState._width, height = lastState._height;
-            var new_dir = lastStateAndDir.Item2;
-            switch (new_dir)
+            int width = newState._width, height = newState._height;
+            switch (newState.dir)
             {
                 case eDirecton.LEFT:
                     headX--;
@@ -265,45 +266,44 @@ namespace SnakeGame
             }
             if (headX == width || headX < 0 || headY == height || headY < 0)
             {
-                lastState._gameOver = true;
-                return lastState;
+                newState._gameOver = true;
+                return newState;
             }
 
-            var tailee = lastState.snake;
-            if (tailee.Count() > 1)              // prevent move head to tail direction
+            var tailee = newState.snake;
+            if (tailee.Count() > 1)               
             {
                 if (tailee[1].x == headX && tailee[1].y == headY)
-                    return lastState;
+                    return Error("Bad input--do not move head toward tail!");
             }
             for (var i = 1; i < tailee.Count(); i++)
             {
-                if(headX == tailee[i].x && headY == tailee[i].y && new_dir != dir)
+                if(headX == tailee[i].x && headY == tailee[i].y)
                 {
-                    lastState._gameOver = true;
-                    return lastState;
+                    newState._gameOver = true;
+                    return newState;
                 }
             }
              
-            if (headX == lastState._food.x && headY == lastState._food.y)
+            if (headX == newState._food.x && headY == newState._food.y)
             {
-                lastState._score++;
-                lastState._food.x = random.Next() % width;
-                lastState._food.y = random.Next() % height;
+                newState._score++;
+                newState._food.x = random.Next() % width;
+                newState._food.y = random.Next() % height;
                 Point newPoint = new Point { x = headX, y = headY };
                 List<Point> newList = new List<Point>();
                 newList.Add(newPoint);
                 foreach (var point in tailee)
                     newList.Add(point);
-                lastState.snake = newList;
+                newState.snake = newList;
             }
             else
             {
-                lastState.snake.Insert(0, new Point { x = headX, y = headY });
-                lastState.snake.RemoveAt(lastState.snake.Count - 1);
+                newState.snake.Insert(0, new Point { x = headX, y = headY });
+                newState.snake.RemoveAt(newState.snake.Count - 1);
             }
-            lastState._currentRound++;
-            dir = new_dir;
-            return lastState;
+            newState._currentRound++;
+            return newState;
         }
 
     }
