@@ -8,3 +8,8 @@ It took me about two hours to finish the core logic, most time is spend in findi
 about another two hours to calibrate the UI. The UI is still fragile, but I think it's enough for demo.
 
 And to make the code more clear, with better bad input handling, I use function composition to connect the logic together.
+
+
+To run the project, on windows 10 machine, open the .sln file by visual studio 2019, and click the Run button or click F5 on the keyboard. The code target at .net framework 4.7, so you need to install it on windows.
+
+My experience on this task: My first try is model the game as a 2d interger array, but after some coding, I found it very hard to get the game state controlled. 2d array is cursed by two or more nested loop with indexed element. so I model the 2d array as a list of point which represent the array's indexes.
